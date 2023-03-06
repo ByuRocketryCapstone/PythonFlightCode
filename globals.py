@@ -11,6 +11,7 @@ START_TIME = time.time()
 
 logger = log.Logger(LOG_FILE_NAME)
 mainSM = mainStateMachine()
+pi = 3.1415962
 
 class loglv(Enum):
     FLIGHT = 1
