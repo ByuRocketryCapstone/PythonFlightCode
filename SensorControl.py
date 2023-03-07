@@ -1,6 +1,8 @@
 import globals as glb
 import SensorData
 
+
+
 class SensorControl:
     def __init__(self):
         pass
