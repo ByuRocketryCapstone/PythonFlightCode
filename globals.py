@@ -16,6 +16,8 @@ TICK_RATE = 1/100   # tick rate of 100 Hz
 mainSM = mainStateMachine()
 sensorControl = SensorControl()
 motorControl = MotorControl()
+pi = 3.1415962
+
 logger = Logger(LOG_FILE_NAME)
 
 
