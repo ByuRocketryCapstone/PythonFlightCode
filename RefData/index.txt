@@ -1,0 +1,7 @@
+762.914 284.57 refData1.txt
+762.914 274.57 refData3.txt
+762.914 264.57 refData5.txt
+782.914 274.57 refData8.txt
+782.914 264.57 refData10.txt
+742.914 274.57 refData13.txt
+742.914 264.57 refData15.txt
