@@ -95,6 +95,7 @@ class Controller:
     def getRefAccel(self, t:float):
         return self.refAccel[self.getTimeIndex(t)]
 
+
     # get index corresponding to the given time
     def getTimeIndex(self, t:float):
         for i in range(len(self.refTime)-1):

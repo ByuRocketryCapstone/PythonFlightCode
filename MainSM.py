@@ -47,7 +47,9 @@ class mainStateMachine:
             else: self.nextState = mn_state.arm_st
             
         elif (self.currState == mn_state.wait_cutoff_st):
-            if (self.cutoff): self.nextState = mn_state.wait_apogee_st
+            if (self.cutoff): 
+                self.nextState = mn_state.wait_apogee_st
+                glb.motorControl.enable = True
             else: self.nextState = mn_state.wait_cutoff_st
 
         elif (self.currState == mn_state.wait_apogee_st):
@@ -55,7 +57,9 @@ class mainStateMachine:
             else: self.nextState = mn_state.wait_apogee_st
 
         elif (self.currState == mn_state.retract_st):
-            if (self.retracted): self.nextState = mn_state.descent_st
+            if (self.retracted): 
+                self.nextState = mn_state.descent_st
+                glb.motorControl.enable = False
             else: self.nextState = mn_state.retract_st
 
         elif (self.currState == mn_state.descent_st):
@@ -76,8 +80,6 @@ class mainStateMachine:
                 self.mainInit()
             else: self.nextState = mn_state.abort_st
 
-
-        self.currState = self.nextState
 
 
         # state action, Moore actions
@@ -100,7 +102,6 @@ class mainStateMachine:
             # Exectute state machine actions
             pass    
             #FIXME: Add code to set indicator LED color
-            # Add code to enable taking sensor data
 
         elif (self.currState == mn_state.wait_cutoff_st):
             # Check for setting next flag
@@ -150,6 +151,11 @@ class mainStateMachine:
         elif (self.currState == mn_state.abort_st):
             pass
     
+
+        if not(self.currState == self.nextState):
+            msg = "Updated motor state from " + str(self.currState) + " to " + str(self.nextState)
+            glb.logger.queueLog(msg)
+        self.currState = self.nextState
 
 
 

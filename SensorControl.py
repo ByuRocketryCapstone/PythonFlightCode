@@ -45,6 +45,9 @@ class SensorControl:
             self.updateData()
         
 
+        if not(self.currState == self.nextState):
+            msg = "Updated sensor control state from " + str(self.currState) + " to " + str(self.nextState)
+            glb.logger.queueLog(msg)
         self.currState = self.nextState
     
 
