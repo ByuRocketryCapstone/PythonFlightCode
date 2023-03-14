@@ -66,7 +66,7 @@ class MotorControl:
         # update states
         if not(self.currState == self.nextState):
             msg = "Updated motor control state from " + str(self.currState) + " to " + str(self.nextState)
-            glb.logger.queueLog(msg)
+            glb.logger.queueLog(msg, glb.loglv.TEST)
         self.currState = self.nextState
     
 

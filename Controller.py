@@ -14,6 +14,8 @@ class Controller:
         self.refAccel = []
         self.refTime = []
 
+        self.loadRefData(glb.dataList[-1].h, glb.dataList[-1].V)
+
 
     def calcAngle(self, currTime:float, currHeight:float, currVelocity:float, currAccel:float):
         error_h = currHeight - self.getRefHeight(currTime)
@@ -24,10 +26,10 @@ class Controller:
         self.cmd_alpha = self.ref_alpha + (error_v * self.kp) + (error_h * self.ki) - (error_a * self.kd)
 
         # Trigger band antiwindup scheme (trying to improve robustnesss)
-        if (abs(error_v) > self.refVelocity(currTime) * .15):
+        if (abs(error_v) > self.getRefVelocity(currTime) * .15):
             self.cmd_alpha = self.ref_alpha + (error_v * self.kp) - (error_a * self.kd)
         
-        if (abs(error_v) <= self.refVelocity(currTime) * .15): 
+        if (abs(error_v) <= self.getRefVelocity(currTime) * .15): 
             self.cmd_alpha = self.ref_alpha + (error_v * self.kp) + (error_h * self.ki) - (error_a * self.kd) 
 
 
@@ -44,8 +46,8 @@ class Controller:
 
     # select reference trajectory and load data for use with the PID algorithm
     def loadRefData(self, mecoHeight:float, mecoVelocity:float):
-        reader = open(glb.INDEX_FILE, "r")
-        selectedHeight = 0; selectedVelocity = 0
+        reader = open(glb.REF_FOLDER + glb.INDEX_FILE, "r")
+        candidateHeights = []; candidateVelocities = []; filenames = []
         selectedFileName = ""
 
         # read starting values from index file and choose trajectory that most closely matches
@@ -54,21 +56,27 @@ class Controller:
         lines = data.splitlines()
         for line in lines:
             values = line.split()
-            currHeight = float(values[0])
-            currVelocity = float(values[1])
-            filename = values[2]
+            candidateHeights.append(float(values[0]))
+            candidateVelocities.append(float(values[1]))
+            filenames.append(values[2])
 
-            # Prioritize matching velocity to matching the height
-            if (abs(mecoVelocity-currVelocity) < abs(mecoVelocity-selectedVelocity) 
-            and abs(mecoHeight-currHeight) < glb.CONTROLLER_HEIGHT_THRESHOLD):
-                selectedHeight = currHeight
-                selectedVelocity = currVelocity
-                selectedFileName = filename
+        minError = 0
+        for i in range(len(candidateHeights)):
+            currError = abs(candidateVelocities[i] - mecoVelocity) + \
+                0.5*abs(candidateHeights[i] - mecoHeight)
+            if (currError < minError): 
+                selectedFileName = filenames[i]
+        
+        if selectedFileName == "":
+            selectedFileName = "refData1.txt"
+
+
         
         # close index file 
         reader.close()
 
         # read data from selected trajectory file
+        glb.logger.queueLog("Selected reference trajectory: " + selectedFileName + " in controller.", glb.loglv.FLIGHT)
         reader = open(glb.REF_FOLDER+selectedFileName, "r")
         data = reader.read()
         lines = data.splitlines()

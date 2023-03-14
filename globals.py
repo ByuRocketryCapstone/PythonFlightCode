@@ -10,7 +10,7 @@ from enum import Enum
 # constants 
 LOG_FILE_NAME = "LogFiles/currLog.txt"
 REF_FOLDER = "RefData/"
-INDEX_FILE = REF_FOLDER + "index.txt"
+INDEX_FILE = "index.txt"
 REF_HEADER_SIZE = 5
 
 KP = 10.618
@@ -21,7 +21,8 @@ MAX_PADDLE_ANGLE = 65 * (math.pi/180)
 CONTROLLER_HEIGHT_THRESHOLD = 40    # m
 START_TIME = time.time()
 
-TICK_RATE = 1/100   # tick rate of 100 Hz
+TICK_RATE = 1/10000   # tick rate of 100 Hz
+lastTick = 0
 
 mainSM = mainStateMachine()
 sensorControl = SensorControl()
@@ -30,7 +31,7 @@ motorControl = MotorControl()
 logger = Logger(LOG_FILE_NAME)
 
 dataListSize = 16
-dataList = []
+dataList = [SensorData(0,0,0,0,0)]
 
 class loglv(Enum):
     FLIGHT = 1
@@ -38,3 +39,4 @@ class loglv(Enum):
 
 LOG_LEVEL = loglv.TEST
 
+fake_data_flag = False

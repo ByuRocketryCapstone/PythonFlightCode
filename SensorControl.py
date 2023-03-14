@@ -1,11 +1,11 @@
 import globals as glb
 from enum import Enum
-import SensorData
-import adafruit_bno055
-import adafruit_dps310_advanced as DPS310
-import BNO055 as BNO055
+from SensorData import SensorData
+# import adafruit_bno055
+# import adafruit_dps310_advanced as DPS310
+# import BNO055 as BNO055
 import time
-import board #whatever board we are using 
+# import board #whatever board we are using 
 
 class sn_state(Enum):
     init_st = 1
@@ -17,6 +17,8 @@ class SensorControl:
     def __init__(self) -> None:
         self.currState = sn_state.init_st
         self.nextState = sn_state.init_st
+        self.fakeReader = open("fakeData.txt", "r")
+        self.fakeDataTick = 0
     
 
     
@@ -52,7 +54,7 @@ class SensorControl:
 
         if not(self.currState == self.nextState):
             msg = "Updated sensor control state from " + str(self.currState) + " to " + str(self.nextState)
-            glb.logger.queueLog(msg)
+            glb.logger.queueLog(msg, glb.loglv.TEST)
         self.currState = self.nextState
     
 
@@ -62,17 +64,38 @@ class SensorControl:
         glb.dataList.append(newData)
         glb.dataList.pop(0)
 
+        self.fakeDataTick += 1
+        if (self.fakeDataTick >= 10):
+            msg = "Sensor Data: " + newData.__str__()
+            glb.logger.queueLog(msg, glb.loglv.TEST)
+            self.fakeDataTick = 0
+    
+
+    def getFakeData(self):
+        line = self.fakeReader.readline()
+        vals = line.split()
+        t = float(vals[0])
+        h = float(vals[1])
+        V = float(vals[2])
+        a = float(vals[3])
+        theta = float(vals[4])
+
+        sd = SensorData(height=h, velocity=V, accel=a, angle=theta, time=t)            
+        return sd
+
 
     def pullData(self) -> SensorData:
         # @Jacob, insert CircuitPy code here to get sensor data, and then return a SensorData object
-        i2c = board.I2C()
+        sd = self.getFakeData()
+        return sd
+        # i2c = board.I2C()
 
-        dps310 = DPS310(i2c)
-        bno055 = adafruit_bno055.BNO055_I2C(i2c)
+        # dps310 = DPS310(i2c)
+        # bno055 = adafruit_bno055.BNO055_I2C(i2c)
 
-        self.currHeight = dps310.altitude
-        self.currAccel = bno055.linear_acceleration
-        self.eulerAngle = bno055.euler
+        # self.currHeight = dps310.altitude
+        # self.currAccel = bno055.linear_acceleration
+        # self.eulerAngle = bno055.euler
 
 
 

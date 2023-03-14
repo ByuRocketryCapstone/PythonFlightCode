@@ -85,9 +85,10 @@ class mainStateMachine:
         # state action, Moore actions
         if (self.currState == mn_state.init_st):
             self.mainInit()
+
         elif (self.currState == mn_state.wait_arm_st):
             # Check for setting next flag
-            if (0): #FIXME: Replace with code that senses when arming pin has been removed
+            if (1): #FIXME: Replace with code that senses when arming pin has been removed
                 self.armed = True
             
             # Exectute state machine actions
@@ -124,7 +125,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.retract_st):
             # Check for setting next flag
-            if (0): #FIXME: Replace with code that senses when the paddles are retracted
+            if (1): #FIXME: Replace with code that senses when the paddles are retracted
                 self.retracted = True
 
             # Exectute state machine actions
@@ -133,7 +134,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.descent_st):
             # Check for setting next flag
-            if (glb.dataList[-1] > -1):
+            if (glb.dataList[-1].V > -1):
                 self.ground = True
             
             # Exectute state machine actions
@@ -142,6 +143,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.done_st):
             # Check for setting next flag
+            glb.fake_data_flag = True
             if (0): #FIXME: Replace with code that senses when the reset button has been pushed
                 self.reset = True
 
@@ -153,8 +155,8 @@ class mainStateMachine:
     
 
         if not(self.currState == self.nextState):
-            msg = "Updated motor state from " + str(self.currState) + " to " + str(self.nextState)
-            glb.logger.queueLog(msg)
+            msg = "Updated main state from " + str(self.currState) + " to " + str(self.nextState)
+            glb.logger.queueLog(msg, glb.loglv.TEST)
         self.currState = self.nextState
 
 
