@@ -7,6 +7,7 @@ import time
 import math
 from enum import Enum
 
+lastTime = time.time()
 # constants 
 LOG_FILE_NAME = "LogFiles/currLog.txt"
 REF_FOLDER = "RefData/"
@@ -21,7 +22,7 @@ MAX_PADDLE_ANGLE = 65 * (math.pi/180)
 CONTROLLER_HEIGHT_THRESHOLD = 40    # m
 START_TIME = time.time()
 
-TICK_RATE = 1/10000   # tick rate of 100 Hz
+TICK_RATE = 1/1000   # tick rate of 100 Hz
 lastTick = 0
 
 mainSM = mainStateMachine()
@@ -31,7 +32,9 @@ motorControl = MotorControl()
 logger = Logger(LOG_FILE_NAME)
 
 dataListSize = 16
-dataList = [SensorData(0,0,0,0,0)]
+dataList = []
+for i in range(dataListSize):
+    dataList.append(SensorData(0,0,0,0,0))
 
 class loglv(Enum):
     FLIGHT = 1

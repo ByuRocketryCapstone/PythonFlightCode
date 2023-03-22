@@ -1,11 +1,13 @@
 import globals as glb
 from enum import Enum
 from SensorData import SensorData
-# import adafruit_bno055
-# import adafruit_dps310_advanced as DPS310
-# import BNO055 as BNO055
 import time
-# import board #whatever board we are using 
+import board
+from adafruit_dps310.advanced import DPS310
+import adafruit_bno055
+import busio 
+
+
 
 class sn_state(Enum):
     init_st = 1
@@ -17,14 +19,17 @@ class SensorControl:
     def __init__(self) -> None:
         self.currState = sn_state.init_st
         self.nextState = sn_state.init_st
+        self.runFakeDataFlag = False
         self.fakeReader = open("fakeData.txt", "r")
         self.fakeDataTick = 0
     
 
     
     def sensorInit(self) -> None:
-        self.enable = False
-
+        self.enable = True
+        self.i2c = board.I2C()
+        self.dps310 = DPS310(self.i2c)
+        self.bno055 = adafruit_bno055.BNO055_I2C(self.i2c)
 
 
     def sensorTick(self) -> None:
@@ -61,8 +66,10 @@ class SensorControl:
 
     def updateData(self) -> None:
         newData = self.pullData()
+        # newData = self.getFakeData()
         glb.dataList.append(newData)
         glb.dataList.pop(0)
+        #print(len(glb.dataList))
 
         self.fakeDataTick += 1
         if (self.fakeDataTick >= 10):
@@ -85,20 +92,33 @@ class SensorControl:
 
 
     def pullData(self) -> SensorData:
-        # @Jacob, insert CircuitPy code here to get sensor data, and then return a SensorData object
-        sd = self.getFakeData()
+           # uses board.SCL and board.SDA
+        
+        h = self.dps310.altitude
+        theta = self.bno055.euler
+        theta = theta[1]
+        #a = self.bno055.acceleration
+        lin_a = self.bno055.linear_acceleration
+        #print(lin_a)
+        a = lin_a[2]
+    
+        t = time.time() - glb.START_TIME
+        
+        
+        dt = t - glb.dataList[-1].t
+        V = 0
+        if (a == None):
+            sd = glb.dataList[-1]
+            sd.t = t
+            return sd
+        else:
+            V_deriv = (h - glb.dataList[-1].h) / dt
+            V_int = ((a + glb.dataList[-1].a) / 2) * dt
+        
+            V = (V_deriv+V_int) / 2
+        
+        sd = SensorData(height=h, angle=theta, accel=a, time=t, velocity=V)
+        
         return sd
-        # i2c = board.I2C()
-
-        # dps310 = DPS310(i2c)
-        # bno055 = adafruit_bno055.BNO055_I2C(i2c)
-
-        # self.currHeight = dps310.altitude
-        # self.currAccel = bno055.linear_acceleration
-        # self.eulerAngle = bno055.euler
 
 
-
-
-        sd = SensorData(self.currHeight,0,self.currAccel,0,0)
-        return sd
