@@ -1,5 +1,6 @@
 import globals as glb
 from enum import Enum
+import time
 
 
 class mn_state(Enum):
@@ -37,39 +38,56 @@ class mainStateMachine:
             self.nextState = mn_state.wait_arm_st
 
         elif (self.currState == mn_state.wait_arm_st):
-            if (self.armed): 
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st
+            
+            elif (self.armed): 
                 self.nextState = mn_state.arm_st
                 glb.sensorControl.enable = True
             else: self.nextState = mn_state.wait_arm_st
         
         elif (self.currState == mn_state.arm_st):
-            if (self.ignition): self.nextState = mn_state.wait_cutoff_st
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st
+            elif (self.ignition): self.nextState = mn_state.wait_cutoff_st
             else: self.nextState = mn_state.arm_st
             
         elif (self.currState == mn_state.wait_cutoff_st):
-            if (self.cutoff): 
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st
+            elif (self.cutoff): 
                 self.nextState = mn_state.wait_apogee_st
                 glb.motorControl.enable = True
             else: self.nextState = mn_state.wait_cutoff_st
 
         elif (self.currState == mn_state.wait_apogee_st):
-            if (self.apogee): self.nextState = mn_state.retract_st
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st 
+            elif (self.apogee):
+                self.nextState = mn_state.retract_st
+                glb.motorControl.retract = True
             else: self.nextState = mn_state.wait_apogee_st
 
         elif (self.currState == mn_state.retract_st):
-            if (self.retracted): 
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st
+            elif (self.retracted): 
                 self.nextState = mn_state.descent_st
                 glb.motorControl.enable = False
             else: self.nextState = mn_state.retract_st
 
         elif (self.currState == mn_state.descent_st):
-            if (self.ground): 
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st
+            elif (self.ground): 
                 self.nextState = mn_state.done_st
                 glb.sensorControl.enable = False
             else: self.nextState = mn_state.descent_st
 
         elif (self.currState == mn_state.done_st):
-            if(self.reset): 
+            if(self.abort == True):
+                self.nextState = mn_state.abort_st
+            elif(self.reset): 
                 self.nextState = mn_state.wait_arm_st
                 self.mainInit()
             else: self.nextState = mn_state.done_st
@@ -79,6 +97,8 @@ class mainStateMachine:
                 self.nextState = mn_state.wait_arm_st
                 self.mainInit()
             else: self.nextState = mn_state.abort_st
+            
+            
 
 
 
@@ -108,6 +128,7 @@ class mainStateMachine:
             # Check for setting next flag
             if (glb.dataList[-1].a < 0):
                 self.cutoff = True
+                glb.CUTOFF_TIME = time.time()
 
             # Exectute state machine actions
             pass
@@ -115,7 +136,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.wait_apogee_st):
             # Check for setting next flag
-            if (glb.dataList[-1].V < 1):
+            if (glb.dataList[-1].V < 0):
                 self.apogee = True
 
             # Exectute state machine actions
@@ -124,13 +145,9 @@ class mainStateMachine:
             # Add code to enable the controller
 
         elif (self.currState == mn_state.retract_st):
-            # Check for setting next flag
-            if (1): #FIXME: Replace with code that senses when the paddles are retracted
-                self.retracted = True
 
             # Exectute state machine actions
             pass
-            #FIXME: Add code to disable the controller
 
         elif (self.currState == mn_state.descent_st):
             # Check for setting next flag
@@ -151,6 +168,7 @@ class mainStateMachine:
             pass
 
         elif (self.currState == mn_state.abort_st):
+            glb.motorControl.retract = True
             pass
     
 

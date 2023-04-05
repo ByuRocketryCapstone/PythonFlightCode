@@ -32,7 +32,7 @@ class Controller:
         if (abs(error_v) <= self.getRefVelocity(currTime) * .15): 
             self.cmd_alpha = self.ref_alpha + (error_v * self.kp) + (error_h * self.ki) - (error_a * self.kd) 
 
-
+        self.cmd_alpha = self.cmd_alpha * (180/3.14159)
         # This is our saturation limits so we dont break things cause that would cause mucho problems
         if (self.cmd_alpha >= glb.MAX_PADDLE_ANGLE): 
             self.cmd_alpha = glb.MAX_PADDLE_ANGLE

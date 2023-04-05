@@ -42,7 +42,7 @@ class MotorControl:
         self.limit_switch.direction = digitalio.Direction.INPUT
         
         # set up class variables
-        self.enable = True
+        self.enable = False
         self.retract = False
         self.has_angle_diff = False
         self.prevMotorAngle = 0
@@ -84,6 +84,7 @@ class MotorControl:
             self.motorInit()
         
         elif (self.currState == mt_state.wait_enable_st):
+            self.stopMotor()
             pass
 
         elif (self.currState == mt_state.check_diff_st):
@@ -98,7 +99,9 @@ class MotorControl:
         
         elif(self.currState == mt_state.retract_st):
             self.updatePaddleAngle()
-            self.retractPaddles()
+            #self.retractPaddles()
+            self.has_angle_diff = self.checkAngleDiff()
+            self.actuateMotor()
         
         # update states
         if not(self.currState == self.nextState):
@@ -119,9 +122,8 @@ class MotorControl:
     def updatePaddleAngle(self):
         # Run PID controller to calculate a desired paddle angle based on current sensor data
         sd = glb.dataList[-1]
-        self.cmdAngle = self.controller.calcAngle(sd.t, sd.h, sd.V, sd.a)
-        self.cmdAngle = 30
-        
+        self.cmdAngle = self.controller.calcAngle(sd.t - glb.CUTOFF_TIME, sd.h, sd.V, sd.a)
+
         # Convert the motor rotation angle to a corresponding paddle angle
         self.updateMotorAngle()
         self.currPaddleAngle = self.motorAngletoPaddleAngle(self.currMotorAngle)
@@ -198,10 +200,9 @@ class MotorControl:
     def retractPaddles(self):
         if(self.limit_switch.value == False):
             self.motor_enable.value = True
-            self.motor_spin.value = True
-        else:
+            self.motor_spin.value = False
+        elif(self.limit_switch.value == True):
             self.motor_enable.value = False
-            self.enable = False
-            self.retract = False
+            glb.mainSM.retracted = True
         
         
