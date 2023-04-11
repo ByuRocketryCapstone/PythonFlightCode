@@ -6,6 +6,7 @@ from SensorData import SensorData
 import time
 import math
 from enum import Enum
+import adafruit_rgbled
 
 lastTime = time.time()
 # constants 
@@ -46,3 +47,19 @@ class loglv(Enum):
 LOG_LEVEL = loglv.TEST
 
 fake_data_flag = False
+
+# Pin the Red LED is connected to
+RED_LED = digitalio.DigitalInOut(board.D26)
+RED_LED.direction = digitalio.Direction.OUTPUT
+
+# Pin the Green LED is connected to
+GREEN_LED = digitalio.DigitalInOut(board.D21)
+GREEN_LED.direction = digitalio.Direction.OUTPUT
+
+# Pin the Blue LED is connected to
+BLUE_LED = digitalio.DigitalInOut(board.D20)
+BLUE_LED.direction = digitalio.Direction.OUTPUT
+
+# Create a RGB LED object
+led = adafruit_rgbled.RGBLED(RED_LED, BLUE_LED, GREEN_LED)
+   
