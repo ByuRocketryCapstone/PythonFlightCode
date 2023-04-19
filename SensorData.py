@@ -15,5 +15,6 @@ class SensorData:
         self.t = time
     
     def __str__(self):
-        return "t: " + str(self.t) + ", h: " + str(self.h) + ", V: " \
-            + str(self.V) + ", a: " + str(self.a) + ", theta: " + str(self.theta)
+#         return "t: " + str(self.t) + ", h: " + str(self.h) + ", V: " \
+#             + str(self.V) + ", a: " + str(self.a) + ", theta: " + str(self.theta)
+        return "{:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}".format(self.t, self.h, self.V, self.a, self.theta)

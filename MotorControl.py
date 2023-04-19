@@ -50,7 +50,7 @@ class MotorControl:
         self.currMotorAngle = 0
         self.cmdAngle = 0
         self.currPaddleAngle = 0
-        self.controller = Controller(glb.KP, glb.KI, glb.KD)
+        #self.controller = Controller(glb.KP, glb.KI, glb.KD)
 
 
 
@@ -85,7 +85,6 @@ class MotorControl:
         
         elif (self.currState == mt_state.wait_enable_st):
             self.stopMotor()
-            pass
 
         elif (self.currState == mt_state.check_diff_st):
             self.updatePaddleAngle()
@@ -98,22 +97,21 @@ class MotorControl:
             self.actuateMotor()
         
         elif(self.currState == mt_state.retract_st):
-            self.updatePaddleAngle()
-            #self.retractPaddles()
-            self.has_angle_diff = self.checkAngleDiff()
-            self.actuateMotor()
+#             self.updatePaddleAngle()
+            self.retractPaddles()
+#             self.has_angle_diff = self.checkAngleDiff()
+#             self.actuateMotor()
         
         # update states
         if not(self.currState == self.nextState):
             msg = "Updated motor control state from " + str(self.currState) + " to " + str(self.nextState)
             glb.logger.queueLog(msg, glb.loglv.TEST)
         self.currState = self.nextState
-        #print(self.currState)
     
 
 
     def checkAngleDiff(self) -> None:
-        if abs(self.cmdAngle - self.currPaddleAngle) > 1: # values are the same if they are within 2 degrees of each other
+        if abs(self.cmdAngle - self.currPaddleAngle) > 1: # values are the same if they are within 1 degree of each other
             return True
         return False
     
@@ -121,8 +119,12 @@ class MotorControl:
     
     def updatePaddleAngle(self):
         # Run PID controller to calculate a desired paddle angle based on current sensor data
-        sd = glb.dataList[-1]
-        self.cmdAngle = self.controller.calcAngle(sd.t - glb.CUTOFF_TIME, sd.h, sd.V, sd.a)
+        curr_t = glb.dataList[-1].t - glb.CUTOFF_TIME
+        curr_h = self.getCurrData("h")
+        curr_V = self.getCurrData("V")
+        curr_a = self.getCurrData("a")
+        # self.cmdAngle = self.controller.calcAngle(curr_t, curr_h, curr_V, curr_a)
+        self.cmdAngle = 45 # FIXME: Currently commanding fixed paddle angle for first test flight, replace with line above after flight
 
         # Convert the motor rotation angle to a corresponding paddle angle
         self.updateMotorAngle()
@@ -131,7 +133,8 @@ class MotorControl:
     
     
     def motorAngletoPaddleAngle(self,motorAngle):
-        #FIXME: Insert Connor's fun angle equation here
+        # This is a third order polynomial curve fit of the paddle angle in degrees as a function of motor angle in degrees
+        # We didn't want to do the kinematics, so we took data of paddle and motor angles and just curve fit it
         paddleAngle = (3*10**-11)*(motorAngle)**3 - (8*10**-7)*(motorAngle)**2 + 0.0114*(motorAngle) + 1.9741 
         return paddleAngle
 
@@ -142,17 +145,14 @@ class MotorControl:
         # See AMT22 Encoder datasheet
         
         
-        msg = [0x0, 0x0]
-        self.spi.xfer2(msg) 
+        msg = [0x0, 0x0] # create message buffer
+        self.spi.xfer2(msg) # perform I2C communication
     
         msg[0] = msg[0] & 0x3F   # Set first two checksum bits to 0
         msg[0] <<= 8   # Left shift first response byte to pad it out to 16 bits
         pos = msg[0] | msg[1]   # Concatenate the two response bytes using bitwise OR 
-        value = pos*(360/16384)
-        #print(value)
+        value = pos*(360/16384) # Convert encoder position to angle in degrees
         
-       
-        #print("")# Convert encoder position to angle in degrees
         prev = self.prevMotorAngle - 360*self.numTurns
         
         
@@ -164,45 +164,73 @@ class MotorControl:
         
         # Update angle values
         self.prevMotorAngle = self.currMotorAngle
-        #print(self.prevMotorAngle)
         
         self.currMotorAngle = value + 360*self.numTurns
-        glb.logger.queueLog("angle: " + str(self.currMotorAngle), 1)
+        glb.logger.queueLog("Motor Angle: " + str(self.currMotorAngle), 1) #FIXME: implement logging level
 
 
-
+    # Runs the stepper motor by sending GPIO signal to the teensey 4.0
     def actuateMotor(self) -> None:        
-        if (self.limit_switch.value == False):  
+        if (self.limit_switch.value == False):  # checks that the limit switch is not pressed
             self.motor_enable.value = True
             
-        
+            # select actuation direction based on the angle returned by the controller
             if(self.cmdAngle > self.currPaddleAngle):
                 self.motor_spin.value = False
         
             elif(self.cmdAngle < self.currPaddleAngle):
                 self.motor_spin.value = True
-            
+        
+        # if the limit switch is pressed but it's trying to go up, then let it
         elif (self.limit_switch.value == True and self.cmdAngle > self.currPaddleAngle):
             self.motor_enable.value = True
             self.motor_spin.value = False
             
-            
+        # if the limit switch is pressed but it's trying to go down, then don't let it
         elif (self.limit_switch.value == True and self.cmdAngle < self.currPaddleAngle):
             self.motor_enable.value = False
 
 
-
+    # set the motor enable pin low to stop it from moving
     def stopMotor(self) -> None:
         self.motor_enable.value = False
 
     
-    
+    # set values for the paddles to retract until the limit switch is pressed, then update the main state machine
     def retractPaddles(self):
         if(self.limit_switch.value == False):
             self.motor_enable.value = True
-            self.motor_spin.value = False
+            self.motor_spin.value = True
         elif(self.limit_switch.value == True):
             self.motor_enable.value = False
-            glb.mainSM.retracted = True
+            # glb.mainSM.retracted = True
+            self.enable = False
+            
+    
+    # Gets an average of the 5 most recent sensor values of the specified type, helps to guard against noise
+    def getCurrData(self, dataType):
+        val = 0
+        avgNum = 5
+        
+        if dataType == "V":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].V
+            val /= avgNum
+        elif dataType == "a":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].a
+            val /= avgNum
+        elif dataType == "h":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].h
+            val /= avgNum
+        elif dataType == "t":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].t
+            val /= avgNum
+        else:
+            print("Specified dataType not recognized: " + str(dataType))
+        
+        return val
         
         

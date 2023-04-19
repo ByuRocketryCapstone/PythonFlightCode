@@ -117,7 +117,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.arm_st):
             # Check for setting next flag
-            if (glb.dataList[-1].V > 1):
+            if (self.getChangeValue("V") > 10):
                 self.ignition = True
             
             # Exectute state machine actions
@@ -126,7 +126,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.wait_cutoff_st):
             # Check for setting next flag
-            if (glb.dataList[-1].a < 0):
+            if (self.getChangeValue("a") < -2):
                 self.cutoff = True
                 glb.CUTOFF_TIME = time.time()
 
@@ -136,13 +136,11 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.wait_apogee_st):
             # Check for setting next flag
-            if (glb.dataList[-1].V < 0):
+            if (self.getChangeValue("V") < 5):
                 self.apogee = True
 
             # Exectute state machine actions
             pass
-            #FIXME: Add code to enable actuating the motor
-            # Add code to enable the controller
 
         elif (self.currState == mn_state.retract_st):
 
@@ -151,16 +149,14 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.descent_st):
             # Check for setting next flag
-            if (glb.dataList[-1].V > -1):
+            if (self.getChangeValue("V") > -2):
                 self.ground = True
             
             # Exectute state machine actions
             pass
-            #FIXME: Add code to disable actuating the motor
 
         elif (self.currState == mn_state.done_st):
             # Check for setting next flag
-            glb.fake_data_flag = True
             if (0): #FIXME: Replace with code that senses when the reset button has been pushed
                 self.reset = True
 
@@ -169,6 +165,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.abort_st):
             glb.motorControl.retract = True
+            
             pass
     
 
@@ -176,6 +173,34 @@ class mainStateMachine:
             msg = "Updated main state from " + str(self.currState) + " to " + str(self.nextState)
             glb.logger.queueLog(msg, glb.loglv.TEST)
         self.currState = self.nextState
+        
+    
+    # Gets an average of the 5 most recent sensor values of the specified type, helps to guard against noise
+    def getChangeValue(self, dataType):
+        val = 0
+        avgNum = 5
+        
+        if dataType == "V":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].V
+            val /= avgNum
+        elif dataType == "a":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].a
+            val /= avgNum
+        elif dataType == "h":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].h
+            val /= avgNum
+        elif dataType == "t":
+            for i in range(1,avgNum+1):
+                val += glb.dataList[-i].t
+            val /= avgNum
+        else:
+            print("Specified dataType not recognized: " + str(dataType))
+        
+        return val
+            
 
 
 
