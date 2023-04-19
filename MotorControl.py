@@ -7,6 +7,7 @@ import digitalio
 import spidev
 
 
+# enum of all the motor control states
 class mt_state(Enum):
     init_st = 1
     wait_enable_st = 2
@@ -15,6 +16,8 @@ class mt_state(Enum):
     retract_st = 5
 
 
+# Class implementing the motor control state machine. This state machine controls the operation of the stepper motor to deploy or retract the paddles. It
+# uses the PID controller to determine the desired angle at each time step, and an absolute value encoder to determine the current angle.
 
 class MotorControl:
     def __init__(self) -> None:
@@ -50,7 +53,8 @@ class MotorControl:
         self.currMotorAngle = 0
         self.cmdAngle = 0
         self.currPaddleAngle = 0
-        #self.controller = Controller(glb.KP, glb.KI, glb.KD)
+        
+        self.controller = Controller(glb.KP, glb.KI, glb.KD) # this is the PID controller
 
 
 
@@ -97,10 +101,9 @@ class MotorControl:
             self.actuateMotor()
         
         elif(self.currState == mt_state.retract_st):
-#             self.updatePaddleAngle()
+            self.updateMotorAngle()
             self.retractPaddles()
-#             self.has_angle_diff = self.checkAngleDiff()
-#             self.actuateMotor()
+
         
         # update states
         if not(self.currState == self.nextState):
@@ -110,6 +113,7 @@ class MotorControl:
     
 
 
+    # checks to see if the system has achieved the desired paddle angle
     def checkAngleDiff(self) -> None:
         if abs(self.cmdAngle - self.currPaddleAngle) > 1: # values are the same if they are within 1 degree of each other
             return True
@@ -123,8 +127,7 @@ class MotorControl:
         curr_h = self.getCurrData("h")
         curr_V = self.getCurrData("V")
         curr_a = self.getCurrData("a")
-        # self.cmdAngle = self.controller.calcAngle(curr_t, curr_h, curr_V, curr_a)
-        self.cmdAngle = 45 # FIXME: Currently commanding fixed paddle angle for first test flight, replace with line above after flight
+        self.cmdAngle = self.controller.calcAngle(curr_t, curr_h, curr_V, curr_a)
 
         # Convert the motor rotation angle to a corresponding paddle angle
         self.updateMotorAngle()
@@ -139,19 +142,20 @@ class MotorControl:
         return paddleAngle
 
 
-
+    
+    # get the current rotation angle of the motor from the encoder
     def updateMotorAngle(self) -> None:
         # Run spi command to retrieve encoder data
-        # See AMT22 Encoder datasheet
+        # See AMT22 Encoder datasheet for more details on reading from encoder
         
         
         msg = [0x0, 0x0] # create message buffer
-        self.spi.xfer2(msg) # perform I2C communication
+        self.spi.xfer2(msg) # perform SPI communication (reads and writes in one line)
     
-        msg[0] = msg[0] & 0x3F   # Set first two checksum bits to 0
+        msg[0] = msg[0] & 0x3F   # Set first two checksum bits to 0 (0x3F is 0b00111111
         msg[0] <<= 8   # Left shift first response byte to pad it out to 16 bits
         pos = msg[0] | msg[1]   # Concatenate the two response bytes using bitwise OR 
-        value = pos*(360/16384) # Convert encoder position to angle in degrees
+        value = pos*(360/16384) # Convert encoder position to angle in degrees (max encoder value at 1 rotation is 2^14 or 16384)
         
         prev = self.prevMotorAngle - 360*self.numTurns
         
@@ -198,13 +202,12 @@ class MotorControl:
     
     # set values for the paddles to retract until the limit switch is pressed, then update the main state machine
     def retractPaddles(self):
-        if(self.limit_switch.value == False):
+        if(self.limit_switch.value == False): # move down while the limit switch is not pressed
             self.motor_enable.value = True
             self.motor_spin.value = True
         elif(self.limit_switch.value == True):
-            self.motor_enable.value = False
-            # glb.mainSM.retracted = True
-            self.enable = False
+            self.motor_enable.value = False # stop moving
+            glb.mainSM.retracted = True # tell the main state machine that the paddles are retracted
             
     
     # Gets an average of the 5 most recent sensor values of the specified type, helps to guard against noise

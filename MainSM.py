@@ -3,6 +3,7 @@ from enum import Enum
 import time
 
 
+# enum of all possible main states
 class mn_state(Enum):
     init_st = 1
     wait_arm_st = 2
@@ -14,6 +15,9 @@ class mn_state(Enum):
     done_st = 8
     abort_st = 9
 
+
+# Class implementing the main state machine. This state machine uses sensor data to determine where in the flight the rocket is, and
+# controls the logic flow of the system. It also enables and disables the other state machines when necessary
 
 class mainStateMachine:
     def __init__(self):
@@ -40,7 +44,6 @@ class mainStateMachine:
         elif (self.currState == mn_state.wait_arm_st):
             if(self.abort == True):
                 self.nextState = mn_state.abort_st
-            
             elif (self.armed): 
                 self.nextState = mn_state.arm_st
                 glb.sensorControl.enable = True
@@ -117,7 +120,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.arm_st):
             # Check for setting next flag
-            if (self.getChangeValue("V") > 10):
+            if (self.getChangeValue("V") > 10): # if the rocket's vertical velocity is greater than 10 m/s
                 self.ignition = True
             
             # Exectute state machine actions
@@ -126,7 +129,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.wait_cutoff_st):
             # Check for setting next flag
-            if (self.getChangeValue("a") < -2):
+            if (self.getChangeValue("a") < -5): # if the rocket's vertical accleration is less than 5 m/s^2
                 self.cutoff = True
                 glb.CUTOFF_TIME = time.time()
 
@@ -136,7 +139,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.wait_apogee_st):
             # Check for setting next flag
-            if (self.getChangeValue("V") < 5):
+            if (self.getChangeValue("V") < 5): # if the rocket's vertical velocity is less than 5 m/s
                 self.apogee = True
 
             # Exectute state machine actions
@@ -149,7 +152,7 @@ class mainStateMachine:
 
         elif (self.currState == mn_state.descent_st):
             # Check for setting next flag
-            if (self.getChangeValue("V") > -2):
+            if (self.getChangeValue("V") > -3):
                 self.ground = True
             
             # Exectute state machine actions
@@ -164,14 +167,18 @@ class mainStateMachine:
             pass
 
         elif (self.currState == mn_state.abort_st):
-            glb.motorControl.retract = True
-            
-            pass
+            if not self.retracted:
+                glb.motorControl.retract = True
+            else:
+                glb.motorControl.enable = False
     
-
+        
+        # log when the state is changed
         if not(self.currState == self.nextState):
             msg = "Updated main state from " + str(self.currState) + " to " + str(self.nextState)
             glb.logger.queueLog(msg, glb.loglv.TEST)
+            
+        # update currState
         self.currState = self.nextState
         
     
